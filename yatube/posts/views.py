@@ -93,6 +93,7 @@ def post_edit(request, post_id):
 
     template = 'posts/create_post.html'
     form = PostForm(instance=post)
+
     context = {
        'is_edit': True,
        'form': form,

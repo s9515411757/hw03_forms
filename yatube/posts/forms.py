@@ -10,7 +10,8 @@ class PostForm(forms.ModelForm):
         widgets = {
             'text': forms.Textarea(attrs={
                 'class': 'form-control', 'name': 'text', 'cols': '40',
-                'rows': '10',  'required id': 'id_text'}),
+                'rows': '10',  'required id': 'id_text'}
+            ),
             'group': forms.Select(attrs={
                 'name': 'group', 'class': 'form-control', 'id': 'id_group'}),
         }
