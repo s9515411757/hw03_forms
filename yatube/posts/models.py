@@ -15,7 +15,10 @@ class Group(models.Model):
         verbose_name="Название",
         help_text="Укажите название группы."
     )
-    description = models.TextField()
+    description = models.TextField(
+        verbose_name="Название",
+        help_text="Укажите описание группы"
+    )
 
     def __str__(self):
         return self.title
@@ -29,7 +32,7 @@ class Post(models.Model):
         on_delete=models.SET_NULL,
         blank=True,
         null=True,
-        related_name='posts',
+        related_name='posts'
     )
     author = models.ForeignKey(
         User,

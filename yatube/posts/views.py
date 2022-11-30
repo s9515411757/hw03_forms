@@ -13,7 +13,7 @@ def pagination(post_list, request):
 
 
 def index(request):
-    post_list = Post.objects.all()
+    post_list = Post.objects.select_related('author', 'group')
     page_obj = pagination(post_list, request)
 
     context = {
@@ -24,9 +24,7 @@ def index(request):
 
 def group_posts(request, slug):
     group = get_object_or_404(Group, slug=slug)
-    posts = Post.objects.filter(
-        group=group
-    )
+    posts = Post.objects.select_related('author', 'group').filter(group=group)
     page_obj = pagination(posts, request)
     context = {
         'group': group,
@@ -37,25 +35,27 @@ def group_posts(request, slug):
 
 def profile(request, username):
     author = User.objects.get(username=username)
-    post_list = Post.objects.filter(author=author)
+    post_list = Post.objects.select_related('author', 'group').filter(
+        author=author
+    )
     page_obj = pagination(post_list, request)
 
     context = {
         'page_obj': page_obj,
-        'post_list': post_list,
+        'post_count': post_list,
         'author': author,
     }
     return render(request, 'posts/profile.html', context)
 
 
 def post_detail(request, post_id):
-    post = get_object_or_404(Post, pk=post_id)
-    author = User.objects.get(username=post.author)
-    post_count = Post.objects.filter(author=author)
+    post = get_object_or_404(Post.objects.select_related(), pk=post_id)
+    post_count = Post.objects.select_related('author', 'group').filter(author=post.author)
+
     context = {
         'post': post,
         'post_count': post_count,
-        'author': author,
+        'author': post.author,
     }
     return render(request, 'posts/post_detail.html', context)
 
@@ -64,9 +64,9 @@ def post_detail(request, post_id):
 def post_create(request):
     form = PostForm(request.POST or None)
     if form.is_valid():
-        form = form.save(commit=False)
-        form.author = request.user
-        form.save()
+        forms = form.save(commit=False)
+        forms.author = request.user
+        forms.save()
         return redirect('posts:profile', request.user.username)
     else:
         context = {
@@ -81,15 +81,14 @@ def post_edit(request, post_id):
     post = get_object_or_404(
         Post.objects.select_related('author', 'group'), pk=post_id
     )
-    post_url = reverse('posts:post_detail', kwargs={'post_id': post.id})
     if request.user != post.author:
-        return redirect(post_url)
+        return redirect('posts:post_detail', post.id)
 
     if request.method == 'POST':
         form = PostForm(request.POST, instance=post)
         if form.is_valid():
             form.save()
-            return redirect(post_url)
+            return redirect('posts:post_detail',  post.id)
 
     template = 'posts/create_post.html'
     form = PostForm(instance=post)
