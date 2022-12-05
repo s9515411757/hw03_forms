@@ -24,7 +24,7 @@ def index(request):
 
 def group_posts(request, slug):
     group = get_object_or_404(Group, slug=slug)
-    posts = Post.objects.select_related('author', 'group').filter(group=group)
+    posts = group.posts.all()
     page_obj = pagination(posts, request)
     context = {
         'group': group,
@@ -35,25 +35,21 @@ def group_posts(request, slug):
 
 def profile(request, username):
     author = User.objects.get(username=username)
-    post_list = Post.objects.select_related('author', 'group').filter(
-        author=author
-    )
+    post_list = author.posts.all()
     page_obj = pagination(post_list, request)
 
     context = {
         'page_obj': page_obj,
-        'post_count': post_list,
         'author': author,
     }
     return render(request, 'posts/profile.html', context)
 
 
 def post_detail(request, post_id):
-    post = get_object_or_404(Post.objects.select_related(), pk=post_id)
-    post_count = Post.objects.select_related('author', 'group').filter(
-        author=post.author
-    )
-
+    post = get_object_or_404(Post.objects.select_related('author', 'group'),
+                             pk=post_id
+                             )
+    post_count = post.author.posts.all()
     context = {
         'post': post,
         'post_count': post_count,
@@ -65,10 +61,9 @@ def post_detail(request, post_id):
 @login_required
 def post_create(request):
     form = PostForm(request.POST or None)
-    if form.is_valid():
-        forms = form.save(commit=False)
-        forms.author = request.user
-        forms.save()
+    if form.is_valid() and request.method == 'POST':
+        form.instance.author = request.user
+        form.save()
         return redirect('posts:profile', request.user.username)
     else:
         context = {
@@ -86,11 +81,11 @@ def post_edit(request, post_id):
     if request.user != post.author:
         return redirect('posts:post_detail', post.id)
 
-    if request.method == 'POST':
-        form = PostForm(request.POST, instance=post)
-        if form.is_valid():
-            form.save()
-            return redirect('posts:post_detail', post.id)
+    form = PostForm(request.POST, instance=post)
+
+    if form.is_valid():
+        form.save()
+        return redirect('posts:post_detail', post.id)
 
     template = 'posts/create_post.html'
     form = PostForm(instance=post)
