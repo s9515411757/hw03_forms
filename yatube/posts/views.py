@@ -24,36 +24,36 @@ def index(request):
 
 def group_posts(request, slug):
     group = get_object_or_404(Group, slug=slug)
-    posts = group.posts.all()
+    posts = group.posts.select_related('author')
     page_obj = pagination(posts, request)
     context = {
         'group': group,
         'page_obj': page_obj,
+        'group_list': True
     }
     return render(request, 'posts/group_list.html', context)
 
 
 def profile(request, username):
     author = User.objects.get(username=username)
-    post_list = author.posts.all()
+    post_list = author.posts.select_related('group')
     page_obj = pagination(post_list, request)
 
     context = {
         'page_obj': page_obj,
         'author': author,
+        'profile': True
     }
     return render(request, 'posts/profile.html', context)
 
 
 def post_detail(request, post_id):
-    post = get_object_or_404(Post.objects.select_related('author', 'group'),
-                             pk=post_id
-                             )
-    post_count = post.author.posts.all()
+    post = get_object_or_404(
+        Post.objects.select_related('author', 'group'), pk=post_id
+    )
     context = {
         'post': post,
-        'post_count': post_count,
-        'author': post.author,
+        'post_count': post.author.posts.all(),
     }
     return render(request, 'posts/post_detail.html', context)
 
@@ -61,16 +61,16 @@ def post_detail(request, post_id):
 @login_required
 def post_create(request):
     form = PostForm(request.POST or None)
-    if form.is_valid() and request.method == 'POST':
+    if form.is_valid():
         form.instance.author = request.user
         form.save()
         return redirect('posts:profile', request.user.username)
-    else:
-        context = {
-            'form': form,
-            'is_edit': False
-        }
-        return render(request, 'posts/create_post.html', context)
+
+    context = {
+        'form': form,
+        'is_edit': False
+    }
+    return render(request, 'posts/create_post.html', context)
 
 
 @login_required
@@ -81,17 +81,14 @@ def post_edit(request, post_id):
     if request.user != post.author:
         return redirect('posts:post_detail', post.id)
 
-    form = PostForm(request.POST, instance=post)
+    form = PostForm(request.POST or None, instance=post)
 
     if form.is_valid():
         form.save()
         return redirect('posts:post_detail', post.id)
 
-    template = 'posts/create_post.html'
-    form = PostForm(instance=post)
-
     context = {
         'form': form,
         'is_edit': True
     }
-    return render(request, template, context)
+    return render(request, 'posts/create_post.html', context)
